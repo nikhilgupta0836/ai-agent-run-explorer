@@ -1,156 +1,137 @@
-# Take-home A: Agent Run Explorer
+# Oraczen AI — Agent Run Explorer
 
-## What this is
+A full-stack monitoring and debugging dashboard for AI-agent executions built with **Python (FastAPI)** and **Next.js (App Router, TypeScript, Tailwind CSS, Recharts)**.
 
-Every agent our platform runs leaves a trace: which steps it took, which tools it
-called, how long each took, how many tokens it burned, and whether it finished.
-Support and delivery engineers currently read those traces by grepping JSON files,
-which is exactly as pleasant as it sounds.
+---
 
-Build them a small web tool to browse and understand agent runs.
+## Project Overview
 
-You have a dataset of 201 runs in [data/runs.jsonl](data/runs.jsonl). Each line is one
-run. Read a few lines before you start designing anything.
+The **Agent Run Explorer** allows support engineers, developers, and platform operators to inspect, filter, search, and analyze execution traces across 201 agent runs stored in `data/runs.jsonl`.
 
-## Timebox and expectations
+### Key Features
+- **Run Explorer (`/runs`)**: Server/Client list view with URL search param synchronization (`status`, `agent`, `started_from`, `started_to`, `search`, `tool`, `sort_by`, `sort_order`, `page`), debounced search, tool filter, keyboard navigation (`↑` `↓` `Enter`), and visible request latency indicator.
+- **Run Inspection (`/runs/[id]`)**: Deep-dive execution detail displaying step breakdowns, expandable cards, deep linking to steps (`#step-3`), error diagnostics, and streaming AI explanations.
+- **Progressive Streaming Explanation**: `POST /api/runs/{id}/explain` streams progressive natural language analysis using a mock provider without external API keys.
+- **Global Dashboard (`/dashboard`)**: Aggregate KPI cards and continuous timeline charts powered by global backend analytics.
+- **Edge-Case Safety**: Robust handling for duplicate IDs (`409 Conflict`), unpriced runs (`cost_usd: null`), running runs (`null` duration), negative duration (`run_0064`), and irregular empty-step records (`run_0089`).
 
-Budget around 8 hours of focused work, spread over up to 4 days. We would much rather
-see the "must build" section done well than all three sections done badly. If you run
-out of time, stop, and write down in `DECISIONS.md` what you would have done next.
+---
 
-Nothing here is a trick. The dataset is deliberately a bit messy, the way production
-data is. Part of what we are assessing is whether you notice.
+## Tech Stack & Architecture
 
-## Stack
+```
+Browser (Next.js Frontend @ http://localhost:3000)
+    ↓ HTTP REST / Streaming
+FastAPI Backend (@ http://localhost:8000)
+    ↓ In-memory JSONL Loader
+data/runs.jsonl (201 records preserved untouched)
+```
 
-- Backend in Python. FastAPI preferred; Flask or Django REST are acceptable.
-- Frontend in Next.js with the App Router, TypeScript, and React.
-- Two processes talking over HTTP. Do not put the data loading inside Next.js API
-  routes and skip the Python service.
-- Styling is your call. Tailwind, CSS modules, plain CSS, a component library, all fine.
-  We are not scoring visual polish, but we are scoring whether the thing is usable.
-- No database required. Loading the JSONL into memory at startup is a reasonable
-  choice for 201 records. Say in `DECISIONS.md` what you would change if the file
-  had 20 million.
+- **Backend**: Python 3.9+, FastAPI, Pydantic v2, Uvicorn, Pytest.
+- **Frontend**: Next.js 14+ (App Router), React 19, TypeScript, Tailwind CSS, Recharts, Lucide React.
 
-## Must build
+---
 
-### Backend
+## Requirements
 
-`GET /api/runs` returns a page of runs, with:
+Ensure you have installed:
+- **Python**: `3.9` or higher
+- **Node.js**: `18.0.0` or higher
+- **npm**: `9.0.0` or higher
 
-- pagination, and a total count so the UI can render "showing 1-25 of 201"
-- filter by `status` and by `agent`, both accepting more than one value
-- filter by a `started_at` date range
-- a text search across the run's prompt
-- sort by `started_at`, `duration_ms`, or `cost_usd`, ascending or descending
+---
 
-Filters must compose. Two agents plus one status plus a date range plus a sort is a
-single valid request, not four separate endpoints.
+## Quick Start (Clean Machine Instructions)
 
-Do not return each run's full `steps` array from the list endpoint.
+### 1. Backend Setup
 
-`GET /api/runs/{id}` returns one run including its steps, and 404s properly for an
-id that does not exist.
+```bash
+# Navigate to backend directory
+cd backend
 
-`GET /api/stats` returns aggregates the dashboard can render without further
-computation on the client:
+# Create and activate virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
 
-- run count and success rate, overall and per agent
-- median and p95 duration for completed runs
-- total cost per agent
-- run counts per day over the dataset's date range
+# Install dependencies
+pip install -r requirements.txt
 
-`POST /api/runs/{id}/explain` returns a short natural-language explanation of what
-the run did and, if it failed, where it went wrong. Stream the response to the client
-as it is produced.
+# Start FastAPI server on port 8000
+uvicorn app.main:app --reload --port 8000
+```
 
-The explain endpoint must work with no API key configured. Ship a mock provider,
-selected by an environment variable, that returns deterministic canned text with a
-small artificial delay so the streaming path is exercised. Use a real model provider
-behind the same interface if you want to; use a free tier and never commit a key.
-We will grade with the mock.
+The backend server will start at **`http://localhost:8000`**.
 
-### Frontend
+### 2. Frontend Setup
 
-`/runs` is a server-rendered list. Filter, search, sort, and page state all live in
-the URL search params, so that a filtered view can be copied into Slack and reopened
-by someone else. Handle the loading, empty, and error cases visibly.
+In a new terminal window:
 
-`/runs/[id]` shows one run: its metadata, its error if it has one, and its steps in
-order with duration and tokens per step. Step inputs and outputs should be readable
-without leaving the page. An "Explain this run" control calls the explain endpoint
-and renders the text as it streams in, not after it completes.
+```bash
+# Navigate to frontend directory
+cd frontend
 
-`/dashboard` renders the `/api/stats` data. Two or three charts is enough. Pick a
-chart library, or draw SVG yourself.
+# Install dependencies
+npm install
 
-### Tests
+# Start Next.js development server on port 3000
+npm run dev
+```
 
-At least three backend tests with real assertions:
+The frontend application will start at **`http://localhost:3000`**.
 
-- one that proves two filters compose correctly
-- one that checks a statistic against a value you computed by hand
+---
 
-At least one frontend test, or a paragraph in `DECISIONS.md` explaining what you would
-test and why you skipped it. "No time" is an acceptable reason if the rest is solid.
+## Application URLs
 
-## Should build, if time allows
+| Service / View | URL |
+| --- | --- |
+| **Frontend Run Explorer** | [http://localhost:3000/runs](http://localhost:3000/runs) |
+| **Frontend Metrics Dashboard** | [http://localhost:3000/dashboard](http://localhost:3000/dashboard) |
+| **Backend API Root** | [http://localhost:8000](http://localhost:8000) |
+| **Swagger API Docs** | [http://localhost:8000/docs](http://localhost:8000/docs) |
 
-- A `tool` filter that matches runs containing a step using that tool.
-- Deep-link to a specific step, so `/runs/run_0042#step-3` opens with that step expanded.
-- Keyboard navigation in the list: arrow keys move the selection, Enter opens.
-- A visible request-duration or request-count indicator so a reviewer can see the
-  frontend is not refetching everything on every keystroke.
+---
 
-## Stretch, purely optional
+## Running Tests
 
-- Cursor pagination alongside offset pagination, with a note on the tradeoff.
-- Handle a run with 500 steps without the detail page stuttering.
-- Docker Compose that brings both services up with one command.
+### Backend Test Suite (Pytest)
 
-## Things you have to decide yourself
+Run backend unit tests verifying composed filters, hand-calculated statistics assertions, 404/409 duplicate ID handling, and sorting:
 
-We left these underspecified on purpose. Any defensible answer scores; an
-undocumented answer does not. Put a sentence on each in `DECISIONS.md`.
+```bash
+cd backend
+source .venv/bin/activate
+PYTHONPATH=. pytest -v tests/
+```
 
-1. Some runs have `cost_usd: null`. Decide what "total cost per agent" means when
-   some rows are unpriced, and make the UI honest about it.
-2. Runs with status `running` have no `ended_at` and no `duration_ms`. Decide how they
-   sort and whether they count toward success rate.
-3. At least one record in the dataset will break a naive loader. Find it. Decide what
-   to do about it, and make sure the API does not silently return something wrong.
-4. `p95 duration` over a filtered set: does your `/api/stats` respect the filters the
-   user has applied on the list page, or is it always global? Either is fine. Pick one
-   and be consistent.
+### Frontend Typecheck & Production Build
 
-## Using AI tools
+Verify frontend TypeScript types and production build:
 
-Use them. Claude, Copilot, Cursor, whatever you normally use. We use them too.
+```bash
+cd frontend
+npm run build
+```
 
-The condition: you own every line you submit. In the follow-up interview we will open
-your repo, point at code, and ask why it is written that way, what a given type is at
-that point, and what breaks if we delete a line. Candidates who cannot answer those
-questions about their own submission do not advance, regardless of how good the code
-looks. Do not submit code you have not read.
+---
 
-## Submitting
+## Environment Variables
 
-Push to a public GitHub repo and send us the link.
+See `.env.example` for all configurable environment variables:
 
-Your repo must have:
+| Variable | Default | Description |
+| --- | --- | --- |
+| `EXPLAIN_PROVIDER` | `mock` | Selects streaming explanation provider (`mock`) |
+| `PORT` | `8000` | Backend server port |
+| `CORS_ORIGINS` | `http://localhost:3000` | Allowed CORS origins |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | Backend API base URL for frontend |
 
-- `README.md` with setup steps that work on a clean machine. Assume the reviewer has
-  Python and Node and nothing else. If a step is missing, we will not guess it.
-- `DECISIONS.md` covering the four decisions above, anything you noticed about the
-  data, what you would do with another day, and which parts you are least happy with.
-  Half a page is plenty. Honest beats impressive here.
-- `.env.example` listing every variable you read. No real keys, ever.
-- Commit history that shows the work: a series of small commits with messages a
-  reviewer can follow. One commit called "initial commit" containing the whole project
-  is an automatic fail, even if the code is excellent.
+---
 
-We will clone it, follow your README, and expect to be looking at a working app inside
-ten minutes. Test that path on a fresh clone before you send it.
+## Dataset Edge-Case Summary
 
-Questions about the brief are welcome and never count against you. Email us.
+1. **Duplicate ID (`run_0031`)**: Retained in list views; detail endpoint returns `409 Conflict`.
+2. **Negative Duration (`run_0064`)**: Preserved in raw dataset; excluded from duration stats calculations.
+3. **Running Runs (9 records)**: Sorted after numeric durations; excluded from success rate denominator.
+4. **Unpriced Runs (3 records)**: Sums known costs; explicitly tags `Unpriced` in UI.
+5. **Irregular Record (`run_0089`)**: Safe bounds checking prevents `IndexError`; renders "No steps recorded."
