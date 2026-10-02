@@ -143,7 +143,7 @@ class DatasetStore:
         # Pagination calculations
         total = len(filtered)
         page = max(1, page)
-        page_size = max(1, min(100, page_size))
+        page_size = max(1, min(500, page_size))
         total_pages = max(1, (total + page_size - 1) // page_size)
 
         start_idx = (page - 1) * page_size
