@@ -1,0 +1,88 @@
+                         APPLICATION STARTS
+                                │
+                                ▼
+                    ┌──────────────────────┐
+                    │     FastAPI App      │
+                    │      Startup         │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │    DatasetStore      │
+                    │    Initialization    │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │     runs.jsonl       │
+                    │                      │
+                    │    201 Agent Runs    │
+                    └──────────┬───────────┘
+                               │
+                         Read JSONL
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │   Pydantic v2        │
+                    │ Validation / Parsing │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │   In-Memory Store    │
+                    │                      │
+                    │ • runs               │
+                    │ • runs_by_id        │
+                    └──────────┬───────────┘
+                               │
+                         DATA READY
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │        USER          │
+                    │ Search / Filter /    │
+                    │ Dashboard / Run View │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │   Next.js Frontend   │
+                    │ React + TypeScript   │
+                    └──────────┬───────────┘
+                               │
+                         REST API Calls
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │    FastAPI API       │
+                    └──────────┬───────────┘
+                               │
+             ┌─────────────────┼──────────────────┐
+             │                 │                  │
+             ▼                 ▼                  ▼
+       ┌────────────┐   ┌────────────┐    ┌──────────────┐
+       │ /api/runs  │   │ /api/stats │    │ /api/runs/id │
+       │            │   │            │    │              │
+       │ Search     │   │ Analytics  │    │ Run Details  │
+       │ Filter     │   │ Success %  │    │ Steps        │
+       │ Sort       │   │ Median     │    │ Errors       │
+       │ Pagination │   │ P95        │    │ Cost         │
+       └─────┬──────┘   └─────┬──────┘    └──────┬───────┘
+             │                 │                  │
+             └─────────────────┼──────────────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │  Processed JSON      │
+                    │      Response        │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │    Dashboard UI      │
+                    │                      │
+                    │ KPI Cards            │
+                    │ Charts               │
+                    │ Run Table            │
+                    │ Run Details          │
+                    └──────────────────────┘
